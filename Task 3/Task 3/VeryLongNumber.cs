@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 
@@ -8,6 +8,9 @@ namespace Task_3
     {
         private List<int> chunks;
         private int sign;
+
+        private const int NumOfDigits = 3;
+        private static readonly int Divider = (int)Math.Pow(10, NumOfDigits);
 
         private readonly Regex ValidString = new Regex(@"-?\d+", RegexOptions.Compiled);
 
@@ -38,8 +41,8 @@ namespace Task_3
 
             while (num.Length > 0)
             {
-                chunks.Add(int.Parse(num.Substring(num.Length - 3 > 0 ? num.Length - 3 : 0)));
-                num = num.Substring(0, num.Length - 3 > 0 ? num.Length - 3 : 0);
+                chunks.Add(int.Parse(num.Substring(num.Length - NumOfDigits > 0 ? num.Length - NumOfDigits : 0)));
+                num = num.Substring(0, num.Length - NumOfDigits > 0 ? num.Length - NumOfDigits : 0);
             }
 
             Normalize();
@@ -95,7 +98,8 @@ namespace Task_3
             {
                 return leftOperand;
             }
-            var result = new VeryLongNumber(); int sum = 0;
+
+            var result = new VeryLongNumber();
             if(Abs(leftOperand) > Abs(rightOperand))
             {
                 result.sign = leftOperand.sign;
@@ -105,6 +109,7 @@ namespace Task_3
                 result.sign = rightOperand.sign;
             }
 
+            int sum = 0;
             for (int i = 0; i < leftOperand.chunks.Count || i < rightOperand.chunks.Count || sum != 0; i++)
             {
                 if(i < leftOperand.chunks.Count)
@@ -117,13 +122,13 @@ namespace Task_3
                 }
                 if(Math.Sign(sum) == result.sign || sum == 0)
                 {
-                    result.chunks.Add(sum % 1000);
-                    sum /= 1000;
+                    result.chunks.Add(sum % Divider);
+                    sum /= Divider;
                 }
                 else
                 {
-                    result.chunks.Add((sum + 1000 * result.sign) % 1000);
-                    sum = (sum - 1000 * result.sign) / 1000;
+                    result.chunks.Add((sum + Divider * result.sign) % Divider);
+                    sum = (sum - Divider * result.sign) / Divider;
                 }
             }
             result.Normalize();
@@ -131,48 +136,7 @@ namespace Task_3
         }
         public static VeryLongNumber operator -(VeryLongNumber leftOperand, VeryLongNumber rightOperand)
         {
-            if (leftOperand.sign == 0)
-            {
-                var res = rightOperand;
-                res.sign *= -1;
-                return res;
-            }
-            else if (rightOperand.sign == 0)
-            {
-                return leftOperand;
-            }
-            var result = new VeryLongNumber(); int residual = 0;
-            if (Abs(leftOperand) > Abs(rightOperand))
-            {
-                result.sign = leftOperand.sign;
-            }
-            else
-            {
-                result.sign = -1 * rightOperand.sign;
-            }
-            for (int i = 0; i < leftOperand.chunks.Count || i < rightOperand.chunks.Count || residual > 0; i++)
-            {
-                if (i < leftOperand.chunks.Count)
-                {
-                    residual += leftOperand.chunks[i] * leftOperand.sign;
-                }
-                if (i < rightOperand.chunks.Count)
-                {
-                    residual -= rightOperand.chunks[i] * rightOperand.sign;
-                }
-                if (Math.Sign(residual) == result.sign || residual == 0)
-                {
-                    result.chunks.Add(residual % 1000);
-                    residual /= 1000;
-                }
-                else
-                {
-                    result.chunks.Add((residual + 1000 * result.sign) % 1000);
-                    residual = (residual - 1000 * result.sign) / 1000;
-                }
-            }
-            result.Normalize();
-            return result;
+            return leftOperand + -rightOperand;
         }
         public static VeryLongNumber operator *(VeryLongNumber leftOperand, VeryLongNumber rightOperand)
         {
@@ -190,17 +154,18 @@ namespace Task_3
                     product += leftOperand.chunks[i] * rightOperand.chunks[j];
                     if(result.chunks.Count < i + j + 1)
                     {
-                        result.chunks.Add(product % 1000);
+                        result.chunks.Add(product % Divider);
                     }
                     else
                     {
-                        product += 1000 * ((result.chunks[i + j] + product % 1000) / 1000);
-                        result.chunks[i+j] = (result.chunks[i + j] + product % 1000) % 1000;
+                        product += Divider * ((result.chunks[i + j] + product % Divider) / Divider);
+                        result.chunks[i+j] = (result.chunks[i + j] + product % Divider) % Divider;
                     }
-                    product /= 1000;
+                    product /= Divider;
                 }
                 if(product > 0) result.chunks.Add(product);
             }
+
             result.sign = leftOperand.sign * rightOperand.sign;
             result.Normalize();
             return result;
@@ -220,24 +185,23 @@ namespace Task_3
                            subtrahend = new VeryLongNumber(rightOperand.ToString()) { sign = 1 },
                            factor = new VeryLongNumber("1");
             int quotient;
-            for (int i = 0; i < minuend.ToString().Length-subtrahend.ToString().Length; i++)
+            for (int i = 0; i <= minuend.ToString().Length-subtrahend.ToString().Length; i++)
             {
                 factor *= new VeryLongNumber("10");
             }
             while(minuend >= subtrahend)
             {
+                if (factor > new VeryLongNumber("1"))
+                {
+                    factor = new VeryLongNumber(factor.ToString().Substring(0, factor.ToString().Length - 1));
+                }
                 quotient = 0;
                 while (minuend >= subtrahend * factor * new VeryLongNumber(quotient + 1))
                 {
                     quotient++;
                 }
-                result *= new VeryLongNumber("10");
-                result += new VeryLongNumber(quotient);
+                result = result * new VeryLongNumber("10") + new VeryLongNumber(quotient);
                 minuend -= subtrahend * factor * new VeryLongNumber(quotient);
-                if (minuend >= subtrahend && factor > new VeryLongNumber("1"))
-                {
-                    factor = new VeryLongNumber(factor.ToString().Substring(0, factor.ToString().Length - 1));
-                }
             }
             result *= factor;
 
@@ -288,6 +252,24 @@ namespace Task_3
             return n1.Equals(n2);
         }
 
+        public static implicit operator VeryLongNumber(int number)
+        {
+            return new VeryLongNumber(number);
+        }
+        public static implicit operator int(VeryLongNumber number)
+        {
+            if(number > new VeryLongNumber(int.MaxValue) || number < new VeryLongNumber(int.MinValue))
+            {
+                throw new OverflowException();
+            }
+            int num = 0;
+            for (int i = number.chunks.Count - 1; i >= 0; i--)
+            {
+                num = num * Divider + number.chunks[i];
+            }
+            return num * number.sign;
+        }
+
         public int CompareTo(VeryLongNumber number)
         {
             if (Math.Sign(chunks.Count - number.chunks.Count) != 0)
@@ -335,7 +317,7 @@ namespace Task_3
         }
         public override int GetHashCode()
         {
-            return 107 * chunks.Count * sign + 511;
+            return 107 * chunks.Count * sign + chunks[0];
         }
         public override bool Equals(object obj)
         {
